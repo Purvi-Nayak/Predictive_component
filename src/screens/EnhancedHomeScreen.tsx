@@ -1,4 +1,11 @@
-import React, {Suspense, useEffect, useState, useCallback} from 'react';
+import React// Enhanced hooks (using the fixed versions)
+import {
+  useAdvancedLazyLoading,
+  useBatchLazyLoading,
+} from '../hooks/useAdvancedLazyLoadingFixed';
+import {useAdvancedAsyncStorage} from '../hooks/useAdvancedAsyncStorageFixed';
+import {useIntelligentPreloading} from '../hooks/useIntelligentPreloadingFixed';
+import {usePerformanceMonitor} from '../utils/performanceMonitor';nse, useEffect, useState, useCallback} from 'react';
 import {
   View,
   Text,

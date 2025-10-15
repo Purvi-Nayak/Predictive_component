@@ -46,7 +46,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
     setIsLoading(true);
 
     try {
-      // Fetch real data from JSONPlaceholder API
+      // Add realistic network delay to show the difference
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Fetch real data from JSONPlaceholder API (no caching)
       const [postsResponse, photosResponse] = await Promise.all([
         fetch('https://jsonplaceholder.typicode.com/posts?_limit=3'),
         fetch('https://jsonplaceholder.typicode.com/photos?_limit=3'),
@@ -139,8 +142,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
         <ScrollView style={styles.scrollView}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Home</Text>
-            <Text style={styles.subtitle}>Predictive Component Demo</Text>
+            <Text style={styles.title}>Regular Home Screen</Text>
+            <Text style={styles.subtitle}>Basic Preloading Demo</Text>
+
+            {/* Demo Comparison Button */}
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#007AFF',
+                padding: 15,
+                borderRadius: 10,
+                marginTop: 15,
+                alignItems: 'center',
+              }}
+              onPress={() => navigation.navigate('EnhancedHome')}>
+              <Text style={{color: 'white', fontWeight: 'bold', fontSize: 16}}>
+                🚀 Try Advanced Preloading Demo
+              </Text>
+              <Text style={{color: 'white', fontSize: 12, marginTop: 5}}>
+                See the difference in performance!
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* Banner Image */}

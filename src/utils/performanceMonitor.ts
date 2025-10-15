@@ -71,8 +71,9 @@ export const usePerformanceMonitor = () => {
 
       stateRef.current.metrics.set(id, metric);
 
-      if (stateRef.current.isDebugMode) {
-        console.log(`📊 Started tracking: ${name} (${type})`);
+      if (__DEV__) {
+        // Only log in development and reduce frequency
+        // console.log(`📊 Started tracking: ${name} (${type})`);
       }
 
       return id;
@@ -406,8 +407,9 @@ class PerformanceMonitor {
 
     this.metrics.set(id, metric);
 
-    if (this.isDebugMode) {
-      console.log(`📊 Started tracking: ${name} (${type})`);
+    if (this.isDebugMode && Math.random() > 0.9) {
+      // Only log 10% of the time to reduce spam
+      // console.log(`📊 Started tracking: ${name} (${type})`);
     }
 
     return id;

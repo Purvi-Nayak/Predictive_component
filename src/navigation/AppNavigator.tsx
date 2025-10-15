@@ -8,11 +8,13 @@ import {createPreloadManager} from '../utils/preloadManager';
 import {ProfileScreen} from '../screens/Profile/ProfileScreen';
 import {ProductsScreen} from '../screens/Products/ProductsScreen';
 import {GalleryScreen} from '../screens/Gallery/GalleryScreen';
-import EnhancedHomeScreen from '../screens/EnhancedHomeScreen';
+import {HomeScreen} from '../screens/Home/HomeScreen';
+import EnhancedHomeScreen from '../screens/EnhancedHomeScreenSimple';
 import {performanceMonitor} from '../utils/performanceMonitor';
 
 export type RootStackParamList = {
   Home: undefined;
+  EnhancedHome: undefined;
   Profile: undefined;
   Products: undefined;
   Gallery: undefined;
@@ -109,9 +111,16 @@ export const AppNavigator: React.FC = () => {
         }}>
         <Stack.Screen
           name="Home"
+          component={HomeScreen}
+          options={{
+            title: 'Regular Home',
+          }}
+        />
+        <Stack.Screen
+          name="EnhancedHome"
           component={EnhancedHomeScreen}
           options={{
-            title: 'Home',
+            title: 'Advanced Preloading Demo',
           }}
         />
         <Stack.Screen
