@@ -432,20 +432,6 @@ export const ProductsScreen: React.FC<ProductsScreenProps> = ({navigation}) => {
         </ScrollView>
 
         {/* Quick Actions */}
-        <View style={styles.quickActionsContainer}>
-          <TouchableOpacity style={styles.quickActionButton}>
-            <Text style={styles.quickActionText}>🛒 Cart</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionButton}>
-            <Text style={styles.quickActionText}>❤️ Wishlist</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionButton}>
-            <Text style={styles.quickActionText}>🔍 Search</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionButton}>
-            <Text style={styles.quickActionText}>⚙️ Filter</Text>
-          </TouchableOpacity>
-        </View>
       </SafeAreaView>
     </SmartPreloader>
   );

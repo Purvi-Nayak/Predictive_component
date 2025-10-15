@@ -21,7 +21,7 @@ export const useAdvancedAsyncStorage = (options: CacheOptions = {}) => {
   const {
     prefix = '@cache',
     compressionEnabled = false,
-    maxSize = 50 * 1024 * 1024, // 50MB
+    maxSize = 100 * 1024 * 1024, // 50MB
   } = options;
 
   const cacheRef = useRef<Map<string, any>>(new Map());
@@ -49,7 +49,7 @@ export const useAdvancedAsyncStorage = (options: CacheOptions = {}) => {
         // Update stats
         setStats(prev => ({
           ...prev,
-          hitRate: prev.hitRate * 0.9 + 0.1, // Moving average
+          hitRate: prev.hitRate * 0.9 + 0.1,
         }));
 
         return cached;
@@ -69,7 +69,6 @@ export const useAdvancedAsyncStorage = (options: CacheOptions = {}) => {
           return null;
         }
       }
-
       return null;
     },
     [prefix],

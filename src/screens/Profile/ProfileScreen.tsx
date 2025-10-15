@@ -148,15 +148,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({navigation}) => {
   };
 
   const handleEditProfile = () => {
-    console.log('Edit profile functionality not implemented yet');
+    console.log('Edit profile functionality not  ');
   };
 
   const handleShareProfile = () => {
-    console.log('Share profile functionality not implemented yet');
+    console.log('Share profile functionality not implemented ');
   };
 
   const handleViewAlbum = (albumId: number) => {
-    console.log(`View album ${albumId} functionality not implemented yet`);
+    console.log(`View album ${albumId} functionality not implemented `);
   };
 
   if (isLoading) {
