@@ -9,7 +9,7 @@ import {ProfileScreen} from '../screens/Profile/ProfileScreen';
 import {ProductsScreen} from '../screens/Products/ProductsScreen';
 import {GalleryScreen} from '../screens/Gallery/GalleryScreen';
 import {HomeScreen} from '../screens/Home/HomeScreen';
-import EnhancedHomeScreen from '../screens/EnhancedHomeScreenSimple';
+import EnhancedHomeScreen from '../screens/EnhancedHomeScreen';
 import {performanceMonitor} from '../utils/performanceMonitor';
 
 export type RootStackParamList = {
