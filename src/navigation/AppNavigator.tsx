@@ -5,13 +5,11 @@ import {useImagePreloader} from '../hooks/useImagePreloader';
 import {useAssetCache} from '../hooks/useAssetCache';
 import {useComponentLoader} from '../hooks/useComponentLoader';
 import {createPreloadManager} from '../utils/preloadManager';
+import {ProfileScreen} from '../screens/Profile/ProfileScreen';
+import {ProductsScreen} from '../screens/Products/ProductsScreen';
+import {GalleryScreen} from '../screens/Gallery/GalleryScreen';
+import EnhancedHomeScreen from '../screens/EnhancedHomeScreen';
 import {performanceMonitor} from '../utils/performanceMonitor';
-import {
-  HomeScreen,
-  ProfileScreen,
-  ProductsScreen,
-  GalleryScreen,
-} from '../screens';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -111,7 +109,7 @@ export const AppNavigator: React.FC = () => {
         }}>
         <Stack.Screen
           name="Home"
-          component={HomeScreen}
+          component={EnhancedHomeScreen}
           options={{
             title: 'Home',
           }}

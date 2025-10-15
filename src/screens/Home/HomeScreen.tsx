@@ -2,26 +2,24 @@ import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  Dimensions,
 } from 'react-native';
 import FastImage from 'react-native-fast-image';
 import {NavigationProp} from '@react-navigation/native';
 import {SmartPreloader} from '../../components/preloaders';
 import {RemoteImages, ApiEndpoints, PreloadGroups} from '../../assets';
-import {performanceMonitor} from '../../utils/performanceMonitor';
 import {RootStackParamList} from '../../navigation/AppNavigator';
-
-const {width} = Dimensions.get('window');
+import useStyle from './style';
+import {performanceMonitor} from '../../utils/performanceMonitor';
 
 interface HomeScreenProps {
   navigation: NavigationProp<RootStackParamList, 'Home'>;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
+  const styles = useStyle();
   const [posts, setPosts] = useState<any[]>([]);
   const [photos, setPhotos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,17 +38,38 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
       );
     }, 100);
 
-    // Load cached data
-    loadCachedData();
+    // Load data from JSONPlaceholder API
+    loadApiData();
   }, []);
 
-  const loadCachedData = async () => {
+  const loadApiData = async () => {
     setIsLoading(true);
 
     try {
-      // These would typically come from your cache
-      // For demo purposes, we'll simulate cached data
-      const mockPosts = [
+      // Fetch real data from JSONPlaceholder API
+      const [postsResponse, photosResponse] = await Promise.all([
+        fetch('https://jsonplaceholder.typicode.com/posts?_limit=3'),
+        fetch('https://jsonplaceholder.typicode.com/photos?_limit=3'),
+      ]);
+
+      const postsData = await postsResponse.json();
+      const photosData = await photosResponse.json();
+
+      setPosts(postsData);
+      setPhotos(
+        photosData.map((photo: any, index: number) => ({
+          ...photo,
+          url: [
+            RemoteImages.product1,
+            RemoteImages.product2,
+            RemoteImages.gallery1,
+          ][index],
+        })),
+      );
+    } catch (error) {
+      console.error('Failed to load API data:', error);
+      // Fallback to mock data
+      setPosts([
         {
           id: 1,
           title: 'Welcome to Predictive Components',
@@ -66,18 +85,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
           title: 'User Experience',
           body: 'Creating smooth and responsive user interfaces...',
         },
-      ];
-
-      const mockPhotos = [
+      ]);
+      setPhotos([
         {id: 1, title: 'Product 1', url: RemoteImages.product1},
         {id: 2, title: 'Product 2', url: RemoteImages.product2},
         {id: 3, title: 'Gallery 1', url: RemoteImages.gallery1},
-      ];
-
-      setPosts(mockPosts);
-      setPhotos(mockPhotos);
-    } catch (error) {
-      console.error('Failed to load cached data:', error);
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -121,8 +134,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
         {key: 'home_photos', url: ApiEndpoints.photos},
       ]}
       strategy="smart"
-      showDebugInfo={false} // Disabled debug for better UI
-    >
+      showDebugInfo={false}>
       <SafeAreaView style={styles.container}>
         <ScrollView style={styles.scrollView}>
           {/* Header */}
@@ -239,143 +251,3 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
     </SmartPreloader>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  header: {
-    padding: 20,
-    paddingTop: 10,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666666',
-    marginTop: 4,
-  },
-  bannerContainer: {
-    height: 200,
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 12,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  bannerImage: {
-    width: '100%',
-    height: '100%',
-  },
-  bannerOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 20,
-  },
-  bannerText: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  bannerSubtext: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  section: {
-    marginHorizontal: 20,
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 15,
-  },
-  cardGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  navCard: {
-    width: (width - 60) / 2,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    alignItems: 'center',
-  },
-  cardImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginBottom: 10,
-  },
-  placeholderImage: {
-    backgroundColor: '#e9ecef',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderText: {
-    fontSize: 24,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 4,
-  },
-  cardDescription: {
-    fontSize: 12,
-    color: '#666666',
-    textAlign: 'center',
-  },
-  postCard: {
-    backgroundColor: '#f8f9fa',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  postTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 8,
-  },
-  postBody: {
-    fontSize: 14,
-    color: '#666666',
-    lineHeight: 20,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#666666',
-    textAlign: 'center',
-    padding: 20,
-  },
-  photoCard: {
-    marginRight: 15,
-    alignItems: 'center',
-  },
-  photoImage: {
-    width: 120,
-    height: 80,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  photoTitle: {
-    fontSize: 12,
-    color: '#666666',
-    textAlign: 'center',
-  },
-});

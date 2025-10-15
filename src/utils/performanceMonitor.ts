@@ -1,8 +1,13 @@
+import {useRef, useCallback} from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 interface PerformanceMetric {
+  id: string;
   name: string;
   startTime: number;
   endTime?: number;
   duration?: number;
+  type: 'navigation' | 'image_load' | 'component_mount' | 'api_call' | 'custom';
   metadata?: Record<string, any>;
 }
 
@@ -11,404 +16,589 @@ interface NavigationMetric {
   to: string;
   timestamp: number;
   duration: number;
-  preloadTime?: number;
 }
 
-interface ResourceMetric {
-  type: 'image' | 'api' | 'component';
-  url: string;
-  size?: number;
-  loadTime: number;
-  cached: boolean;
-  timestamp: number;
+interface CacheStats {
+  hits: number;
+  misses: number;
+  totalRequests: number;
+  hitRate: number;
 }
 
-export class PerformanceMonitor {
-  private metrics: PerformanceMetric[] = [];
-  private navigationMetrics: NavigationMetric[] = [];
-  private resourceMetrics: ResourceMetric[] = [];
-  private memorySnapshots: Array<{timestamp: number; usage: number}> = [];
-  private readonly maxMetrics: number = 1000;
+// Global state for performance monitoring
+const globalPerformanceState = {
+  metrics: new Map<string, PerformanceMetric>(),
+  navigationHistory: [] as NavigationMetric[],
+  cacheStats: {
+    hits: 0,
+    misses: 0,
+    totalRequests: 0,
+    hitRate: 0,
+  } as CacheStats,
+  isDebugMode: __DEV__,
+};
 
-  // Start measuring a performance metric
-  startMetric(name: string, metadata?: Record<string, any>): string {
-    const metricId = `${name}_${Date.now()}_${Math.random()}`;
-    const startTime = Date.now();
+/**
+ * Performance monitoring hook for tracking app performance metrics
+ * Provides utilities for measuring navigation, cache performance, and custom metrics
+ */
+export const usePerformanceMonitor = () => {
+  const stateRef = useRef(globalPerformanceState);
 
-    this.metrics.push({
-      name: metricId,
-      startTime,
-      metadata,
+  /**
+   * Start tracking a performance metric
+   * @param name Metric name/identifier
+   * @param type Type of metric being tracked
+   * @param metadata Additional data to store with the metric
+   * @returns Metric ID for ending the measurement
+   */
+  const startMetric = useCallback(
+    (
+      name: string,
+      type: PerformanceMetric['type'] = 'custom',
+      metadata?: Record<string, any>,
+    ): string => {
+      const id = `${name}_${Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
+      const metric: PerformanceMetric = {
+        id,
+        name,
+        startTime: Date.now(),
+        type,
+        metadata,
+      };
+
+      stateRef.current.metrics.set(id, metric);
+
+      if (stateRef.current.isDebugMode) {
+        console.log(`📊 Started tracking: ${name} (${type})`);
+      }
+
+      return id;
+    },
+    [],
+  );
+
+  /**
+   * End tracking a performance metric
+   * @param id Metric ID returned from startMetric
+   */
+  const endMetric = useCallback(
+    async (id: string): Promise<PerformanceMetric | null> => {
+      const metric = stateRef.current.metrics.get(id);
+      if (!metric) {
+        console.warn(`Performance metric with ID ${id} not found`);
+        return null;
+      }
+
+      const endTime = Date.now();
+      const duration = endTime - metric.startTime;
+
+      const completedMetric: PerformanceMetric = {
+        ...metric,
+        endTime,
+        duration,
+      };
+
+      stateRef.current.metrics.set(id, completedMetric);
+
+      if (stateRef.current.isDebugMode) {
+        console.log(`✅ Completed: ${metric.name} - ${duration}ms`);
+      }
+
+      // Store metric persistently for analysis
+      await storeMetric(completedMetric);
+
+      return completedMetric;
+    },
+    [],
+  );
+
+  /**
+   * Track navigation performance
+   * @param from Source screen
+   * @param to Destination screen
+   * @param duration Navigation duration in ms
+   */
+  const trackNavigation = useCallback(
+    (from: string, to: string, duration: number): void => {
+      const navigationMetric: NavigationMetric = {
+        from,
+        to,
+        timestamp: Date.now(),
+        duration,
+      };
+
+      stateRef.current.navigationHistory.push(navigationMetric);
+
+      if (stateRef.current.isDebugMode) {
+        console.log(`🧭 Navigation: ${from} → ${to} (${duration}ms)`);
+      }
+
+      // Keep only last 50 navigation records
+      if (stateRef.current.navigationHistory.length > 50) {
+        stateRef.current.navigationHistory =
+          stateRef.current.navigationHistory.slice(-50);
+      }
+    },
+    [],
+  );
+
+  /**
+   * Track cache hit/miss statistics
+   * @param isHit Whether the cache request was a hit or miss
+   */
+  const trackCacheHit = useCallback((isHit: boolean): void => {
+    stateRef.current.cacheStats.totalRequests++;
+
+    if (isHit) {
+      stateRef.current.cacheStats.hits++;
+    } else {
+      stateRef.current.cacheStats.misses++;
+    }
+
+    stateRef.current.cacheStats.hitRate =
+      stateRef.current.cacheStats.hits /
+      stateRef.current.cacheStats.totalRequests;
+
+    if (stateRef.current.isDebugMode) {
+      console.log(
+        `💾 Cache ${isHit ? 'HIT' : 'MISS'} - Hit rate: ${(
+          stateRef.current.cacheStats.hitRate * 100
+        ).toFixed(1)}%`,
+      );
+    }
+  }, []);
+
+  /**
+   * Get performance statistics
+   */
+  const getStats = useCallback(() => {
+    const completedMetrics = Array.from(
+      stateRef.current.metrics.values(),
+    ).filter(m => m.duration !== undefined);
+
+    const averageMetricsByType: Record<string, number> = {};
+    const metricsByType: Record<string, number[]> = {};
+
+    completedMetrics.forEach(metric => {
+      if (!metricsByType[metric.type]) {
+        metricsByType[metric.type] = [];
+      }
+      metricsByType[metric.type].push(metric.duration!);
     });
 
-    return metricId;
+    Object.keys(metricsByType).forEach(type => {
+      const durations = metricsByType[type];
+      averageMetricsByType[type] =
+        durations.reduce((sum, duration) => sum + duration, 0) /
+        durations.length;
+    });
+
+    return {
+      metrics: completedMetrics,
+      navigation: [...stateRef.current.navigationHistory],
+      cache: {...stateRef.current.cacheStats},
+      averageMetricsByType,
+    };
+  }, []);
+
+  /**
+   * Clear all performance data
+   */
+  const clearStats = useCallback((): void => {
+    stateRef.current.metrics.clear();
+    stateRef.current.navigationHistory = [];
+    stateRef.current.cacheStats = {
+      hits: 0,
+      misses: 0,
+      totalRequests: 0,
+      hitRate: 0,
+    };
+
+    if (stateRef.current.isDebugMode) {
+      console.log('🧹 Performance stats cleared');
+    }
+  }, []);
+
+  /**
+   * Enable/disable debug mode
+   */
+  const setDebugMode = useCallback((enabled: boolean): void => {
+    stateRef.current.isDebugMode = enabled;
+  }, []);
+
+  /**
+   * Get current debug mode status
+   */
+  const isDebugEnabled = useCallback((): boolean => {
+    return stateRef.current.isDebugMode;
+  }, []);
+
+  /**
+   * Load stored metrics from AsyncStorage
+   */
+  const loadStoredMetrics = useCallback(async (): Promise<
+    PerformanceMetric[]
+  > => {
+    try {
+      const storedMetrics = await AsyncStorage.getItem('performance_metrics');
+      return storedMetrics ? JSON.parse(storedMetrics) : [];
+    } catch (error) {
+      console.error('Failed to load stored metrics:', error);
+      return [];
+    }
+  }, []);
+
+  /**
+   * Measure async operation performance
+   * @param name Operation name
+   * @param operation Async operation to measure
+   */
+  const measureAsync = useCallback(
+    async <T>(name: string, operation: () => Promise<T>): Promise<T> => {
+      const metricId = startMetric(name, 'custom');
+      try {
+        const result = await operation();
+        await endMetric(metricId);
+        return result;
+      } catch (error) {
+        await endMetric(metricId);
+        throw error;
+      }
+    },
+    [startMetric, endMetric],
+  );
+
+  /**
+   * Take memory snapshot (placeholder for React Native)
+   */
+  const takeMemorySnapshot = useCallback((): void => {
+    if (stateRef.current.isDebugMode) {
+    }
+  }, []);
+
+  /**
+   * Get detailed performance report
+   */
+  const getDetailedReport = useCallback((): string => {
+    const stats = getStats();
+    let report = '📊 PERFORMANCE REPORT\n';
+    report += '==================\n\n';
+
+    report += `🔄 Navigation Metrics:\n`;
+    stats.navigation.forEach(nav => {
+      report += `  ${nav.from} → ${nav.to}: ${nav.duration}ms\n`;
+    });
+
+    report += `\n💾 Cache Statistics:\n`;
+    report += `  Hits: ${stats.cache.hits}\n`;
+    report += `  Misses: ${stats.cache.misses}\n`;
+    report += `  Hit Rate: ${(stats.cache.hitRate * 100).toFixed(1)}%\n`;
+
+    report += `\n⏱️ Average Metrics by Type:\n`;
+    Object.entries(stats.averageMetricsByType).forEach(([type, avg]) => {
+      report += `  ${type}: ${avg.toFixed(2)}ms\n`;
+    });
+
+    return report;
+  }, [getStats]);
+
+  /**
+   * Export metrics as JSON string
+   */
+  const exportMetrics = useCallback((): string => {
+    const stats = getStats();
+    return JSON.stringify(stats, null, 2);
+  }, [getStats]);
+
+  /**
+   * Get real-time performance data
+   */
+  const getRealTimeData = useCallback(() => {
+    return {
+      recentMemory: [{usage: 0, timestamp: Date.now()}], // Placeholder
+      activeMetrics: Array.from(stateRef.current.metrics.values()).filter(
+        m => !m.duration,
+      ),
+      systemHealth: 'good' as const,
+    };
+  }, []);
+
+  /**
+   * Clear all metrics
+   */
+  const clearMetrics = useCallback((): void => {
+    clearStats();
+  }, [clearStats]);
+
+  return {
+    startMetric,
+    endMetric,
+    trackNavigation,
+    trackCacheHit,
+    getStats,
+    clearStats,
+    setDebugMode,
+    isDebugEnabled,
+    loadStoredMetrics,
+    measureAsync,
+    takeMemorySnapshot,
+    getDetailedReport,
+    exportMetrics,
+    getRealTimeData,
+    clearMetrics,
+  };
+};
+
+/**
+ * Store metric persistently for later analysis
+ */
+const storeMetric = async (metric: PerformanceMetric): Promise<void> => {
+  try {
+    const existingMetrics = await AsyncStorage.getItem('performance_metrics');
+    const metrics: PerformanceMetric[] = existingMetrics
+      ? JSON.parse(existingMetrics)
+      : [];
+
+    metrics.push(metric);
+
+    // Keep only last 100 metrics to prevent storage bloat
+    const trimmedMetrics = metrics.slice(-100);
+
+    await AsyncStorage.setItem(
+      'performance_metrics',
+      JSON.stringify(trimmedMetrics),
+    );
+  } catch (error) {
+    console.error('Failed to store performance metric:', error);
+  }
+};
+
+// Legacy singleton instance for backward compatibility
+class PerformanceMonitor {
+  private metrics: Map<string, PerformanceMetric> = new Map();
+  private navigationHistory: NavigationMetric[] = [];
+  private cacheStats: CacheStats = {
+    hits: 0,
+    misses: 0,
+    totalRequests: 0,
+    hitRate: 0,
+  };
+  private isDebugMode: boolean = __DEV__;
+
+  startMetric(
+    name: string,
+    type: PerformanceMetric['type'] = 'custom',
+    metadata?: Record<string, any>,
+  ): string {
+    const id = `${name}_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+    const metric: PerformanceMetric = {
+      id,
+      name,
+      startTime: Date.now(),
+      type,
+      metadata,
+    };
+
+    this.metrics.set(id, metric);
+
+    if (this.isDebugMode) {
+      console.log(`📊 Started tracking: ${name} (${type})`);
+    }
+
+    return id;
   }
 
-  // End measuring a performance metric
-  endMetric(metricId: string): number | null {
-    const metric = this.metrics.find(m => m.name === metricId);
-
+  async endMetric(id: string): Promise<PerformanceMetric | null> {
+    const metric = this.metrics.get(id);
     if (!metric) {
-      console.warn(`Metric not found: ${metricId}`);
+      console.warn(`Performance metric with ID ${id} not found`);
       return null;
     }
 
     const endTime = Date.now();
     const duration = endTime - metric.startTime;
 
-    metric.endTime = endTime;
-    metric.duration = duration;
+    const completedMetric: PerformanceMetric = {
+      ...metric,
+      endTime,
+      duration,
+    };
 
-    this.cleanupOldMetrics();
+    this.metrics.set(id, completedMetric);
 
-    return duration;
-  }
-
-  // Measure a function execution time
-  async measureAsync<T>(
-    name: string,
-    fn: () => Promise<T>,
-    metadata?: Record<string, any>,
-  ): Promise<{result: T; duration: number}> {
-    const metricId = this.startMetric(name, metadata);
-
-    try {
-      const result = await fn();
-      const duration = this.endMetric(metricId) || 0;
-
-      return {result, duration};
-    } catch (error) {
-      this.endMetric(metricId);
-      throw error;
+    if (this.isDebugMode) {
+      console.log(`✅ Completed: ${metric.name} - ${duration}ms`);
     }
+
+    await storeMetric(completedMetric);
+    return completedMetric;
   }
 
-  // Measure synchronous function execution time
-  measure<T>(
-    name: string,
-    fn: () => T,
-    metadata?: Record<string, any>,
-  ): {result: T; duration: number} {
-    const startTime = Date.now();
-
-    try {
-      const result = fn();
-      const duration = Date.now() - startTime;
-
-      this.metrics.push({
-        name,
-        startTime,
-        endTime: startTime + duration,
-        duration,
-        metadata,
-      });
-
-      this.cleanupOldMetrics();
-
-      return {result, duration};
-    } catch (error) {
-      const duration = Date.now() - startTime;
-
-      this.metrics.push({
-        name,
-        startTime,
-        endTime: startTime + duration,
-        duration,
-        metadata: {
-          ...metadata,
-          error: error instanceof Error ? error.message : String(error),
-        },
-      });
-
-      this.cleanupOldMetrics();
-      throw error;
-    }
-  }
-
-  // Track navigation performance
-  trackNavigation(
-    from: string,
-    to: string,
-    duration: number,
-    preloadTime?: number,
-  ): void {
-    this.navigationMetrics.push({
+  trackNavigation(from: string, to: string, duration: number): void {
+    const navigationMetric: NavigationMetric = {
       from,
       to,
       timestamp: Date.now(),
       duration,
-      preloadTime,
-    });
+    };
 
-    // Keep only recent navigation metrics
-    if (this.navigationMetrics.length > 100) {
-      this.navigationMetrics = this.navigationMetrics.slice(-100);
+    this.navigationHistory.push(navigationMetric);
+
+    if (this.isDebugMode) {
+      console.log(`🧭 Navigation: ${from} → ${to} (${duration}ms)`);
+    }
+
+    if (this.navigationHistory.length > 50) {
+      this.navigationHistory = this.navigationHistory.slice(-50);
     }
   }
 
-  // Track resource loading performance
-  trackResourceLoad(
-    type: 'image' | 'api' | 'component',
-    url: string,
-    loadTime: number,
-    cached: boolean,
-    size?: number,
-  ): void {
-    this.resourceMetrics.push({
-      type,
-      url,
-      size,
-      loadTime,
-      cached,
-      timestamp: Date.now(),
-    });
+  trackCacheHit(isHit: boolean): void {
+    this.cacheStats.totalRequests++;
 
-    // Keep only recent resource metrics
-    if (this.resourceMetrics.length > 500) {
-      this.resourceMetrics = this.resourceMetrics.slice(-500);
+    if (isHit) {
+      this.cacheStats.hits++;
+    } else {
+      this.cacheStats.misses++;
+    }
+
+    this.cacheStats.hitRate =
+      this.cacheStats.hits / this.cacheStats.totalRequests;
+
+    if (this.isDebugMode) {
+      console.log(
+        `💾 Cache ${isHit ? 'HIT' : 'MISS'} - Hit rate: ${(
+          this.cacheStats.hitRate * 100
+        ).toFixed(1)}%`,
+      );
     }
   }
 
-  // Take a memory usage snapshot
-  takeMemorySnapshot(): void {
-    // In a real implementation, you'd use native modules to get actual memory usage
-    // For now, we'll simulate it
-    const simulatedMemoryUsage = Math.random() * 100 + 50; // 50-150 MB
-
-    this.memorySnapshots.push({
-      timestamp: Date.now(),
-      usage: simulatedMemoryUsage,
-    });
-
-    // Keep only recent snapshots
-    if (this.memorySnapshots.length > 100) {
-      this.memorySnapshots = this.memorySnapshots.slice(-100);
-    }
-  }
-
-  // Get performance statistics
-  getStats(): {
-    averageMetrics: Record<
-      string,
-      {average: number; count: number; min: number; max: number}
-    >;
-    navigationStats: {
-      averageNavigationTime: number;
-      slowestNavigations: NavigationMetric[];
-      preloadEfficiency: number;
-    };
-    resourceStats: {
-      cacheHitRate: number;
-      averageLoadTimes: Record<string, number>;
-      slowestResources: ResourceMetric[];
-    };
-    memoryStats: {
-      average: number;
-      peak: number;
-      current: number;
-    };
-  } {
-    // Calculate average metrics
-    const metricGroups: Record<string, number[]> = {};
-
-    this.metrics.forEach(metric => {
-      if (metric.duration !== undefined) {
-        const baseName = metric.name.split('_')[0];
-        if (!metricGroups[baseName]) {
-          metricGroups[baseName] = [];
-        }
-        metricGroups[baseName].push(metric.duration);
-      }
-    });
-
-    const averageMetrics: Record<
-      string,
-      {average: number; count: number; min: number; max: number}
-    > = {};
-
-    Object.entries(metricGroups).forEach(([name, durations]) => {
-      averageMetrics[name] = {
-        average: durations.reduce((sum, d) => sum + d, 0) / durations.length,
-        count: durations.length,
-        min: Math.min(...durations),
-        max: Math.max(...durations),
-      };
-    });
-
-    // Navigation statistics
-    const navigationTimes = this.navigationMetrics.map(n => n.duration);
-    const averageNavigationTime =
-      navigationTimes.length > 0
-        ? navigationTimes.reduce((sum, t) => sum + t, 0) /
-          navigationTimes.length
-        : 0;
-
-    const slowestNavigations = this.navigationMetrics
-      .sort((a, b) => b.duration - a.duration)
-      .slice(0, 5);
-
-    const preloadedNavigations = this.navigationMetrics.filter(
-      n => n.preloadTime !== undefined,
+  getStats() {
+    const completedMetrics = Array.from(this.metrics.values()).filter(
+      m => m.duration !== undefined,
     );
-    const preloadEfficiency =
-      preloadedNavigations.length > 0
-        ? preloadedNavigations.reduce(
-            (sum, n) => sum + (n.preloadTime || 0),
-            0,
-          ) / preloadedNavigations.length
-        : 0;
 
-    // Resource statistics
-    const cachedResources = this.resourceMetrics.filter(r => r.cached).length;
-    const cacheHitRate =
-      this.resourceMetrics.length > 0
-        ? (cachedResources / this.resourceMetrics.length) * 100
-        : 0;
+    const averageMetricsByType: Record<string, number> = {};
+    const metricsByType: Record<string, number[]> = {};
 
-    const resourceLoadTimes: Record<string, number[]> = {};
-    this.resourceMetrics.forEach(resource => {
-      if (!resourceLoadTimes[resource.type]) {
-        resourceLoadTimes[resource.type] = [];
+    completedMetrics.forEach(metric => {
+      if (!metricsByType[metric.type]) {
+        metricsByType[metric.type] = [];
       }
-      resourceLoadTimes[resource.type].push(resource.loadTime);
+      metricsByType[metric.type].push(metric.duration!);
     });
 
-    const averageLoadTimes: Record<string, number> = {};
-    Object.entries(resourceLoadTimes).forEach(([type, times]) => {
-      averageLoadTimes[type] =
-        times.reduce((sum, t) => sum + t, 0) / times.length;
+    Object.keys(metricsByType).forEach(type => {
+      const durations = metricsByType[type];
+      averageMetricsByType[type] =
+        durations.reduce((sum, duration) => sum + duration, 0) /
+        durations.length;
     });
-
-    const slowestResources = this.resourceMetrics
-      .sort((a, b) => b.loadTime - a.loadTime)
-      .slice(0, 10);
-
-    // Memory statistics
-    const memoryUsages = this.memorySnapshots.map(s => s.usage);
-    const memoryStats = {
-      average:
-        memoryUsages.length > 0
-          ? memoryUsages.reduce((sum, u) => sum + u, 0) / memoryUsages.length
-          : 0,
-      peak: memoryUsages.length > 0 ? Math.max(...memoryUsages) : 0,
-      current:
-        memoryUsages.length > 0 ? memoryUsages[memoryUsages.length - 1] : 0,
-    };
 
     return {
-      averageMetrics,
-      navigationStats: {
-        averageNavigationTime,
-        slowestNavigations,
-        preloadEfficiency,
-      },
-      resourceStats: {
-        cacheHitRate,
-        averageLoadTimes,
-        slowestResources,
-      },
-      memoryStats,
+      metrics: completedMetrics,
+      navigation: [...this.navigationHistory],
+      cache: {...this.cacheStats},
+      averageMetricsByType,
     };
   }
 
-  // Get detailed performance report
+  clearStats(): void {
+    this.metrics.clear();
+    this.navigationHistory = [];
+    this.cacheStats = {
+      hits: 0,
+      misses: 0,
+      totalRequests: 0,
+      hitRate: 0,
+    };
+
+    if (this.isDebugMode) {
+      console.log('🧹 Performance stats cleared');
+    }
+  }
+
+  setDebugMode(enabled: boolean): void {
+    this.isDebugMode = enabled;
+  }
+
+  isDebugEnabled(): boolean {
+    return this.isDebugMode;
+  }
+
+  async loadStoredMetrics(): Promise<PerformanceMetric[]> {
+    try {
+      const storedMetrics = await AsyncStorage.getItem('performance_metrics');
+      return storedMetrics ? JSON.parse(storedMetrics) : [];
+    } catch (error) {
+      console.error('Failed to load stored metrics:', error);
+      return [];
+    }
+  }
+
+  async measureAsync<T>(name: string, operation: () => Promise<T>): Promise<T> {
+    const metricId = this.startMetric(name, 'custom');
+    try {
+      const result = await operation();
+      await this.endMetric(metricId);
+      return result;
+    } catch (error) {
+      await this.endMetric(metricId);
+      throw error;
+    }
+  }
+
+  takeMemorySnapshot(): void {
+    if (this.isDebugMode) {
+    }
+  }
+
   getDetailedReport(): string {
     const stats = this.getStats();
+    let report = '📊 PERFORMANCE REPORT\n';
+    report += '==================\n\n';
 
-    let report = '📊 Performance Monitor Report\n';
-    report += '================================\n\n';
-
-    // Metrics summary
-    report += '🔍 Metrics Summary:\n';
-    Object.entries(stats.averageMetrics).forEach(([name, data]) => {
-      report += `  ${name}: avg ${data.average.toFixed(2)}ms (${
-        data.count
-      } samples, min: ${data.min}ms, max: ${data.max}ms)\n`;
+    report += `🔄 Navigation Metrics:\n`;
+    stats.navigation.forEach(nav => {
+      report += `  ${nav.from} → ${nav.to}: ${nav.duration}ms\n`;
     });
 
-    // Navigation performance
-    report += '\n🧭 Navigation Performance:\n';
-    report += `  Average navigation time: ${stats.navigationStats.averageNavigationTime.toFixed(
-      2,
-    )}ms\n`;
-    report += `  Preload efficiency: ${stats.navigationStats.preloadEfficiency.toFixed(
-      2,
-    )}ms\n`;
+    report += `\n💾 Cache Statistics:\n`;
+    report += `  Hits: ${stats.cache.hits}\n`;
+    report += `  Misses: ${stats.cache.misses}\n`;
+    report += `  Hit Rate: ${(stats.cache.hitRate * 100).toFixed(1)}%\n`;
 
-    if (stats.navigationStats.slowestNavigations.length > 0) {
-      report += '  Slowest navigations:\n';
-      stats.navigationStats.slowestNavigations.forEach(nav => {
-        report += `    ${nav.from} → ${nav.to}: ${nav.duration}ms\n`;
-      });
-    }
-
-    // Resource performance
-    report += '\n📦 Resource Performance:\n';
-    report += `  Cache hit rate: ${stats.resourceStats.cacheHitRate.toFixed(
-      1,
-    )}%\n`;
-
-    Object.entries(stats.resourceStats.averageLoadTimes).forEach(
-      ([type, time]) => {
-        report += `  Average ${type} load time: ${time.toFixed(2)}ms\n`;
-      },
-    );
-
-    // Memory usage
-    report += '\n💾 Memory Usage:\n';
-    report += `  Average: ${stats.memoryStats.average.toFixed(1)}MB\n`;
-    report += `  Peak: ${stats.memoryStats.peak.toFixed(1)}MB\n`;
-    report += `  Current: ${stats.memoryStats.current.toFixed(1)}MB\n`;
+    report += `\n⏱️ Average Metrics by Type:\n`;
+    Object.entries(stats.averageMetricsByType).forEach(([type, avg]) => {
+      report += `  ${type}: ${avg.toFixed(2)}ms\n`;
+    });
 
     return report;
   }
 
-  // Clear all metrics
-  clearMetrics(): void {
-    this.metrics = [];
-    this.navigationMetrics = [];
-    this.resourceMetrics = [];
-    this.memorySnapshots = [];
+  exportMetrics(): string {
+    const stats = this.getStats();
+    return JSON.stringify(stats, null, 2);
   }
 
-  // Get real-time performance data for monitoring
   getRealTimeData() {
-    const recentMetrics = this.metrics.slice(-10);
-    const recentNavigation = this.navigationMetrics.slice(-5);
-    const recentResources = this.resourceMetrics.slice(-20);
-    const recentMemory = this.memorySnapshots.slice(-10);
-
     return {
-      recentMetrics,
-      recentNavigation,
-      recentResources,
-      recentMemory,
-      timestamp: Date.now(),
+      recentMemory: [{usage: 0, timestamp: Date.now()}], // Placeholder
+      activeMetrics: Array.from(this.metrics.values()).filter(m => !m.duration),
+      systemHealth: 'good' as const,
     };
   }
 
-  // Cleanup old metrics to prevent memory leaks
-  private cleanupOldMetrics(): void {
-    if (this.metrics.length > this.maxMetrics) {
-      this.metrics = this.metrics.slice(-this.maxMetrics);
-    }
-  }
-
-  // Export metrics to JSON for analysis
-  exportMetrics(): string {
-    return JSON.stringify(
-      {
-        metrics: this.metrics,
-        navigationMetrics: this.navigationMetrics,
-        resourceMetrics: this.resourceMetrics,
-        memorySnapshots: this.memorySnapshots,
-        exportedAt: Date.now(),
-      },
-      null,
-      2,
-    );
+  clearMetrics(): void {
+    this.clearStats();
   }
 }
 
-// Singleton instance
+// Export singleton instance for backward compatibility
 export const performanceMonitor = new PerformanceMonitor();

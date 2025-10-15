@@ -59,12 +59,16 @@ export const SmartPreloader: React.FC<SmartPreloaderProps> = ({
     if (isPreloading) return;
 
     setIsPreloading(true);
-    const metricId = performanceMonitor.startMetric(`preload_${screenName}`, {
-      images: imageUrls.length,
-      data: dataRequests.length,
-      components: components.length,
-      strategy,
-    });
+    const metricId = performanceMonitor.startMetric(
+      `preload_${screenName}`,
+      'custom',
+      {
+        images: imageUrls.length,
+        data: dataRequests.length,
+        components: components.length,
+        strategy,
+      },
+    );
 
     try {
       const promises = [];
@@ -123,7 +127,8 @@ export const SmartPreloader: React.FC<SmartPreloaderProps> = ({
 
       await Promise.allSettled(promises);
 
-      const totalTime = performanceMonitor.endMetric(metricId) || 0;
+      const completedMetric = await performanceMonitor.endMetric(metricId);
+      const totalTime = completedMetric?.duration || 0;
       setPreloadStats(prev => ({
         ...prev,
         totalTime,
@@ -135,7 +140,7 @@ export const SmartPreloader: React.FC<SmartPreloaderProps> = ({
       );
     } catch (error) {
       console.error(`❌ Smart preloading failed for ${screenName}:`, error);
-      performanceMonitor.endMetric(metricId);
+      await performanceMonitor.endMetric(metricId);
     } finally {
       setIsPreloading(false);
     }
