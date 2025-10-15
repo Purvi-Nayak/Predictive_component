@@ -200,17 +200,16 @@ const EnhancedHomeScreen: React.FC = ({navigation}: any) => {
   return (
     <SmartPreloader
       screenName="EnhancedHome"
-      imageUrls={[
-        RemoteImages.banner,
-        RemoteImages.product1,
-        RemoteImages.product2,
-      ]}
-      dataRequests={[
-        {key: 'enhanced_posts', url: ApiEndpoints.posts, ttl: 15 * 60 * 1000},
-        {key: 'enhanced_photos', url: ApiEndpoints.photos, ttl: 30 * 60 * 1000},
-      ]}
-      strategy="smart"
-      showDebugInfo={__DEV__}>
+      // imageUrls={[
+      //   RemoteImages.banner,
+      //   RemoteImages.product1,
+      //   RemoteImages.product2,
+      // ]}
+      // dataRequests={[
+      //   {key: 'enhanced_posts', url: ApiEndpoints.posts, ttl: 15 * 60 * 1000},
+      //   {key: 'enhanced_photos', url: ApiEndpoints.photos, ttl: 30 * 60 * 1000},
+      // ]}
+    >
       <ScrollView
         style={{flex: 1, backgroundColor: '#fff'}}
         refreshControl={
@@ -260,19 +259,6 @@ const EnhancedHomeScreen: React.FC = ({navigation}: any) => {
               borderRadius: 8,
               marginBottom: 10,
             }}>
-            <Text style={{fontSize: 14, marginBottom: 5}}>
-              ✅ Intelligent caching with AsyncStorage
-            </Text>
-            <Text style={{fontSize: 14, marginBottom: 5}}>
-              ✅ Predictive image preloading
-            </Text>
-            <Text style={{fontSize: 14, marginBottom: 5}}>
-              ✅ Behavior pattern tracking
-            </Text>
-            <Text style={{fontSize: 14, marginBottom: 10}}>
-              ✅ Performance monitoring
-            </Text>
-
             <View
               style={{
                 borderTopWidth: 1,
@@ -515,7 +501,7 @@ const EnhancedHomeScreen: React.FC = ({navigation}: any) => {
         </View>
 
         {/* Performance Metrics (Debug) */}
-        {__DEV__ && (
+        {/* {__DEV__ && (
           <View
             style={{
               padding: 20,
@@ -539,7 +525,7 @@ const EnhancedHomeScreen: React.FC = ({navigation}: any) => {
               🎯 This demonstrates predictive preloading in action!
             </Text>
           </View>
-        )}
+        )} */}
       </ScrollView>
     </SmartPreloader>
   );
