@@ -76,11 +76,8 @@ const EnhancedHomeScreen: React.FC = ({navigation}: any) => {
         return;
       }
 
-      // NETWORK REQUEST - Add realistic delay to show difference
+      // NETWORK REQUEST - Real performance, no artificial delay
       setCacheStatus('network');
-
-      // Simulate realistic network delay
-      await new Promise(resolve => setTimeout(resolve, 800));
 
       const [postsResponse, photosResponse] = await Promise.all([
         fetch('https://jsonplaceholder.typicode.com/posts?_limit=5'),
@@ -499,33 +496,6 @@ const EnhancedHomeScreen: React.FC = ({navigation}: any) => {
             ))}
           </ScrollView>
         </View>
-
-        {/* Performance Metrics (Debug) */}
-        {/* {__DEV__ && (
-          <View
-            style={{
-              padding: 20,
-              backgroundColor: '#e3f2fd',
-              margin: 20,
-              borderRadius: 8,
-            }}>
-            <Text style={{fontSize: 16, fontWeight: 'bold', marginBottom: 10}}>
-              📊 Performance Metrics
-            </Text>
-            <Text style={{fontSize: 12, color: '#666', marginBottom: 5}}>
-              Cache Hit Rate: {(cache.stats.hitRate * 100).toFixed(1)}%
-            </Text>
-            <Text style={{fontSize: 12, color: '#666', marginBottom: 5}}>
-              Total Cache Size: {(cache.stats.totalSize / 1024).toFixed(1)} KB
-            </Text>
-            <Text style={{fontSize: 12, color: '#666', marginBottom: 5}}>
-              Navigation Predictions: Active
-            </Text>
-            <Text style={{fontSize: 12, color: '#007AFF'}}>
-              🎯 This demonstrates predictive preloading in action!
-            </Text>
-          </View>
-        )} */}
       </ScrollView>
     </SmartPreloader>
   );
