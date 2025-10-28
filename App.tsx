@@ -7,13 +7,13 @@ import React from 'react';
 import {StatusBar} from 'react-native';
 import {AppNavigator} from './src/navigation';
 
-function App(): React.JSX.Element {
+const App = (): React.JSX.Element => {
   return (
     <>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <AppNavigator />
     </>
   );
-}
+};
 
 export default App;

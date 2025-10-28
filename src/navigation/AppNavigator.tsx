@@ -4,7 +4,10 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useImagePreloader} from '../hooks/useImagePreloader';
 import {useAssetCache} from '../hooks/useAssetCache';
 import {useComponentLoader} from '../hooks/useComponentLoader';
-import {createPreloadManager} from '../utils/preloadManager';
+import {
+  createPreloadManager,
+  initializePreloadManager,
+} from '../utils/preloadManager';
 import {ProfileScreen} from '../screens/Profile/ProfileScreen';
 import {ProductsScreen} from '../screens/Products/ProductsScreen';
 import {GalleryScreen} from '../screens/Gallery/GalleryScreen';
@@ -33,25 +36,18 @@ export const AppNavigator: React.FC = () => {
   > | null>(null);
 
   useEffect(() => {
-    // Only create the preload manager once
-    const manager = createPreloadManager(
-      {
-        strategy: {
-          images: 'predictive',
-          components: 'lazy',
-          data: 'predictive',
-        },
-        maxConcurrentImages: 3,
-        maxConcurrentComponents: 2,
-        imagePriority: 'normal',
-        enablePerformanceMonitoring: true,
+    // Initialize preload manager with hooks
+    const manager = initializePreloadManager({
+      strategy: {
+        images: 'predictive',
+        components: 'lazy',
+        data: 'predictive',
       },
-      {
-        imagePreloader,
-        assetCache,
-        componentLoader,
-      },
-    );
+      maxConcurrentImages: 3,
+      maxConcurrentComponents: 2,
+      imagePriority: 'normal',
+      enablePerformanceMonitoring: true,
+    });
 
     setPreloadManager(manager);
   }, []); // Empty dependency array - only run once
@@ -59,8 +55,15 @@ export const AppNavigator: React.FC = () => {
   useEffect(() => {
     if (!preloadManager) return;
 
+    // Create hooks object for the functional API
+    const hooks = {
+      imagePreloader,
+      assetCache,
+      componentLoader,
+    };
+
     // Preload critical assets when the app starts (only once)
-    preloadManager.preloadCriticalAssets();
+    preloadManager.preloadCriticalAssets(hooks);
 
     // Set up periodic performance monitoring
     const performanceInterval = setInterval(() => {
@@ -73,17 +76,24 @@ export const AppNavigator: React.FC = () => {
     return () => {
       clearInterval(performanceInterval);
     };
-  }, [preloadManager]); // Only depend on preloadManager
+  }, [preloadManager, imagePreloader, assetCache, componentLoader]); // Depend on hooks too
 
   const handleNavigationStateChange = (state: any) => {
     if (state && preloadManager) {
       const currentScreen = getCurrentScreenName(state);
       if (currentScreen) {
+        // Create hooks object for the functional API
+        const hooks = {
+          imagePreloader,
+          assetCache,
+          componentLoader,
+        };
+
         // Track navigation for predictive preloading
-        preloadManager.onNavigate(currentScreen);
+        preloadManager.onNavigate(currentScreen, componentLoader);
 
         // Preload assets for the current screen
-        preloadManager.preloadForScreen(currentScreen);
+        preloadManager.preloadForScreen(currentScreen, hooks);
       }
     }
   };
