@@ -89,8 +89,8 @@ export const usePreloadManager = (
           }ms`,
         );
       } catch (error) {
-        console.error(`❌ Preloading failed for ${screenName}:`, error);
-        // Remove from preloaded set if failed, so it can be retried
+        console.error(` Preloading failed for ${screenName}:`, error);
+
         preloadedScreensRef.current.delete(screenName);
       }
     },
@@ -146,10 +146,7 @@ export const usePreloadManager = (
       try {
         await Promise.allSettled(promises);
       } catch (error) {
-        console.error(
-          `❌ API preloading failed for context ${context}:`,
-          error,
-        );
+        console.error(` API preloading failed for context ${context}:`, error);
       }
     },
     [assetCache],
@@ -260,7 +257,7 @@ export const usePreloadManager = (
     navigationHistoryRef.current = [];
     preloadedScreensRef.current.clear();
     criticalAssetsPreloadedRef.current = false;
-    console.log('✅ All caches cleared');
+    console.log(' All caches cleared');
   }, [imagePreloader, assetCache]);
 
   // Helper methods for network and device conditions
@@ -415,10 +412,7 @@ export const createPreloadManager = (
       try {
         await Promise.allSettled(promises);
       } catch (error) {
-        console.error(
-          `❌ API preloading failed for context ${context}:`,
-          error,
-        );
+        console.error(` API preloading failed for context ${context}:`, error);
       }
     };
 
@@ -434,7 +428,7 @@ export const createPreloadManager = (
         return;
       }
 
-      console.log(`🚀 Preloading assets for screen: ${screenName}`);
+      console.log(` Preloading assets for screen: ${screenName}`);
       preloadedScreens.add(screenName);
 
       const group = PreloadGroups[screenName as keyof typeof PreloadGroups];
@@ -460,12 +454,10 @@ export const createPreloadManager = (
 
         const endTime = Date.now();
         console.log(
-          `✅ Preloading completed for ${screenName} in ${
-            endTime - startTime
-          }ms`,
+          ` Preloading completed for ${screenName} in ${endTime - startTime}ms`,
         );
       } catch (error) {
-        console.error(`❌ Preloading failed for ${screenName}:`, error);
+        console.error(` Preloading failed for ${screenName}:`, error);
         preloadedScreens.delete(screenName);
       }
     };
@@ -545,7 +537,7 @@ export const createPreloadManager = (
       navigationHistory = [];
       preloadedScreens.clear();
       criticalAssetsPreloaded = false;
-      console.log('✅ All caches cleared');
+      console.log(' All caches cleared');
     };
 
     const preloadCriticalAssets = async (hooks: {
@@ -556,7 +548,7 @@ export const createPreloadManager = (
         return;
       }
 
-      console.log('🎯 Preloading critical assets...');
+      console.log(' Preloading critical assets...');
       criticalAssetsPreloaded = true;
 
       const criticalImages = [RemoteImages.userProfile, RemoteImages.banner];
@@ -567,7 +559,7 @@ export const createPreloadManager = (
         preloadApiData(criticalApis, 'critical', hooks.assetCache),
       ]);
 
-      console.log('✅ Critical assets preloaded');
+      console.log(' Critical assets preloaded');
     };
 
     return {

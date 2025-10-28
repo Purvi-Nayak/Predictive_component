@@ -273,7 +273,7 @@ const EnhancedHomeScreen: React.FC = ({navigation}: any) => {
                       ? '#ffc107'
                       : '#007AFF',
                 }}>
-                📊 Load #{loadCount}: {loadTime}ms{' '}
+                Load #{loadCount}: {loadTime}ms{' '}
                 {cacheStatus === 'cache'
                   ? '(⚡ CACHED - Super Fast!)'
                   : cacheStatus === 'network'

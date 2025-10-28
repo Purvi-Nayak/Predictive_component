@@ -55,14 +55,12 @@ export const AppNavigator: React.FC = () => {
   useEffect(() => {
     if (!preloadManager) return;
 
-    // Create hooks object for the functional API
     const hooks = {
       imagePreloader,
       assetCache,
       componentLoader,
     };
 
-    // Preload critical assets when the app starts (only once)
     preloadManager.preloadCriticalAssets(hooks);
 
     // Set up periodic performance monitoring
