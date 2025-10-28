@@ -47,10 +47,6 @@ export const usePerformanceMonitor = () => {
 
   /**
    * Start tracking a performance metric
-   * @param name Metric name/identifier
-   * @param type Type of metric being tracked
-   * @param metadata Additional data to store with the metric
-   * @returns Metric ID for ending the measurement
    */
   const startMetric = useCallback(
     (
@@ -83,7 +79,6 @@ export const usePerformanceMonitor = () => {
 
   /**
    * End tracking a performance metric
-   * @param id Metric ID returned from startMetric
    */
   const endMetric = useCallback(
     async (id: string): Promise<PerformanceMetric | null> => {
@@ -118,9 +113,6 @@ export const usePerformanceMonitor = () => {
 
   /**
    * Track navigation performance
-   * @param from Source screen
-   * @param to Destination screen
-   * @param duration Navigation duration in ms
    */
   const trackNavigation = useCallback(
     (from: string, to: string, duration: number): void => {
@@ -148,7 +140,6 @@ export const usePerformanceMonitor = () => {
 
   /**
    * Track cache hit/miss statistics
-   * @param isHit Whether the cache request was a hit or miss
    */
   const trackCacheHit = useCallback((isHit: boolean): void => {
     stateRef.current.cacheStats.totalRequests++;
@@ -254,8 +245,6 @@ export const usePerformanceMonitor = () => {
 
   /**
    * Measure async operation performance
-   * @param name Operation name
-   * @param operation Async operation to measure
    */
   const measureAsync = useCallback(
     async <T>(name: string, operation: () => Promise<T>): Promise<T> => {
@@ -293,12 +282,12 @@ export const usePerformanceMonitor = () => {
       report += `  ${nav.from} → ${nav.to}: ${nav.duration}ms\n`;
     });
 
-    report += `\n💾 Cache Statistics:\n`;
+    report += `\n Cache Statistics:\n`;
     report += `  Hits: ${stats.cache.hits}\n`;
     report += `  Misses: ${stats.cache.misses}\n`;
     report += `  Hit Rate: ${(stats.cache.hitRate * 100).toFixed(1)}%\n`;
 
-    report += `\n⏱️ Average Metrics by Type:\n`;
+    report += `\n⏱ Average Metrics by Type:\n`;
     Object.entries(stats.averageMetricsByType).forEach(([type, avg]) => {
       report += `  ${type}: ${avg.toFixed(2)}ms\n`;
     });
@@ -377,23 +366,24 @@ const storeMetric = async (metric: PerformanceMetric): Promise<void> => {
   }
 };
 
-// Legacy singleton instance for backward compatibility
-class PerformanceMonitor {
-  private metrics: Map<string, PerformanceMetric> = new Map();
-  private navigationHistory: NavigationMetric[] = [];
-  private cacheStats: CacheStats = {
+// Modern functional approach for global performance monitoring (without React hooks)
+export const createPerformanceMonitor = () => {
+  // Use plain JavaScript objects instead of useRef
+  const metricsMap = new Map<string, PerformanceMetric>();
+  let navigationHistory: NavigationMetric[] = [];
+  let cacheStats: CacheStats = {
     hits: 0,
     misses: 0,
     totalRequests: 0,
     hitRate: 0,
   };
-  private isDebugMode: boolean = __DEV__;
+  let isDebugMode = __DEV__;
 
-  startMetric(
+  const startMetric = (
     name: string,
     type: PerformanceMetric['type'] = 'custom',
     metadata?: Record<string, any>,
-  ): string {
+  ): string => {
     const id = `${name}_${Date.now()}_${Math.random()
       .toString(36)
       .substr(2, 9)}`;
@@ -405,18 +395,16 @@ class PerformanceMonitor {
       metadata,
     };
 
-    this.metrics.set(id, metric);
+    metricsMap.set(id, metric);
 
-    if (this.isDebugMode && Math.random() > 0.9) {
-      // Only log 10% of the time to reduce spam
-      // console.log(`📊 Started tracking: ${name} (${type})`);
+    if (isDebugMode && Math.random() > 0.9) {
     }
 
     return id;
-  }
+  };
 
-  async endMetric(id: string): Promise<PerformanceMetric | null> {
-    const metric = this.metrics.get(id);
+  const endMetric = async (id: string): Promise<PerformanceMetric | null> => {
+    const metric = metricsMap.get(id);
     if (!metric) {
       console.warn(`Performance metric with ID ${id} not found`);
       return null;
@@ -431,17 +419,21 @@ class PerformanceMonitor {
       duration,
     };
 
-    this.metrics.set(id, completedMetric);
+    metricsMap.set(id, completedMetric);
 
-    if (this.isDebugMode) {
+    if (isDebugMode) {
       console.log(`✅ Completed: ${metric.name} - ${duration}ms`);
     }
 
     await storeMetric(completedMetric);
     return completedMetric;
-  }
+  };
 
-  trackNavigation(from: string, to: string, duration: number): void {
+  const trackNavigation = (
+    from: string,
+    to: string,
+    duration: number,
+  ): void => {
     const navigationMetric: NavigationMetric = {
       from,
       to,
@@ -449,40 +441,39 @@ class PerformanceMonitor {
       duration,
     };
 
-    this.navigationHistory.push(navigationMetric);
+    navigationHistory.push(navigationMetric);
 
-    if (this.isDebugMode) {
+    if (isDebugMode) {
       console.log(`🧭 Navigation: ${from} → ${to} (${duration}ms)`);
     }
 
-    if (this.navigationHistory.length > 50) {
-      this.navigationHistory = this.navigationHistory.slice(-50);
+    if (navigationHistory.length > 50) {
+      navigationHistory = navigationHistory.slice(-50);
     }
-  }
+  };
 
-  trackCacheHit(isHit: boolean): void {
-    this.cacheStats.totalRequests++;
+  const trackCacheHit = (isHit: boolean): void => {
+    cacheStats.totalRequests++;
 
     if (isHit) {
-      this.cacheStats.hits++;
+      cacheStats.hits++;
     } else {
-      this.cacheStats.misses++;
+      cacheStats.misses++;
     }
 
-    this.cacheStats.hitRate =
-      this.cacheStats.hits / this.cacheStats.totalRequests;
+    cacheStats.hitRate = cacheStats.hits / cacheStats.totalRequests;
 
-    if (this.isDebugMode) {
+    if (isDebugMode) {
       console.log(
         `💾 Cache ${isHit ? 'HIT' : 'MISS'} - Hit rate: ${(
-          this.cacheStats.hitRate * 100
+          cacheStats.hitRate * 100
         ).toFixed(1)}%`,
       );
     }
-  }
+  };
 
-  getStats() {
-    const completedMetrics = Array.from(this.metrics.values()).filter(
+  const getStats = () => {
+    const completedMetrics = Array.from(metricsMap.values()).filter(
       m => m.duration !== undefined,
     );
 
@@ -505,36 +496,36 @@ class PerformanceMonitor {
 
     return {
       metrics: completedMetrics,
-      navigation: [...this.navigationHistory],
-      cache: {...this.cacheStats},
+      navigation: [...navigationHistory],
+      cache: {...cacheStats},
       averageMetricsByType,
     };
-  }
+  };
 
-  clearStats(): void {
-    this.metrics.clear();
-    this.navigationHistory = [];
-    this.cacheStats = {
+  const clearStats = (): void => {
+    metricsMap.clear();
+    navigationHistory = [];
+    cacheStats = {
       hits: 0,
       misses: 0,
       totalRequests: 0,
       hitRate: 0,
     };
 
-    if (this.isDebugMode) {
+    if (isDebugMode) {
       console.log('🧹 Performance stats cleared');
     }
-  }
+  };
 
-  setDebugMode(enabled: boolean): void {
-    this.isDebugMode = enabled;
-  }
+  const setDebugMode = (enabled: boolean): void => {
+    isDebugMode = enabled;
+  };
 
-  isDebugEnabled(): boolean {
-    return this.isDebugMode;
-  }
+  const isDebugEnabled = (): boolean => {
+    return isDebugMode;
+  };
 
-  async loadStoredMetrics(): Promise<PerformanceMetric[]> {
+  const loadStoredMetrics = async (): Promise<PerformanceMetric[]> => {
     try {
       const storedMetrics = await AsyncStorage.getItem('performance_metrics');
       return storedMetrics ? JSON.parse(storedMetrics) : [];
@@ -542,65 +533,87 @@ class PerformanceMonitor {
       console.error('Failed to load stored metrics:', error);
       return [];
     }
-  }
+  };
 
-  async measureAsync<T>(name: string, operation: () => Promise<T>): Promise<T> {
-    const metricId = this.startMetric(name, 'custom');
+  const measureAsync = async <T>(
+    name: string,
+    operation: () => Promise<T>,
+  ): Promise<T> => {
+    const metricId = startMetric(name, 'custom');
     try {
       const result = await operation();
-      await this.endMetric(metricId);
+      await endMetric(metricId);
       return result;
     } catch (error) {
-      await this.endMetric(metricId);
+      await endMetric(metricId);
       throw error;
     }
-  }
+  };
 
-  takeMemorySnapshot(): void {
-    if (this.isDebugMode) {
+  const takeMemorySnapshot = (): void => {
+    if (isDebugMode) {
+      // Placeholder for memory monitoring
     }
-  }
+  };
 
-  getDetailedReport(): string {
-    const stats = this.getStats();
-    let report = '📊 PERFORMANCE REPORT\n';
+  const getDetailedReport = (): string => {
+    const stats = getStats();
+    let report = ' PERFORMANCE REPORT\n';
     report += '==================\n\n';
 
-    report += `🔄 Navigation Metrics:\n`;
+    report += ` Navigation Metrics:\n`;
     stats.navigation.forEach(nav => {
       report += `  ${nav.from} → ${nav.to}: ${nav.duration}ms\n`;
     });
 
-    report += `\n💾 Cache Statistics:\n`;
+    report += `\n Cache Statistics:\n`;
     report += `  Hits: ${stats.cache.hits}\n`;
     report += `  Misses: ${stats.cache.misses}\n`;
     report += `  Hit Rate: ${(stats.cache.hitRate * 100).toFixed(1)}%\n`;
 
-    report += `\n⏱️ Average Metrics by Type:\n`;
+    report += `\n Average Metrics by Type:\n`;
     Object.entries(stats.averageMetricsByType).forEach(([type, avg]) => {
       report += `  ${type}: ${avg.toFixed(2)}ms\n`;
     });
 
     return report;
-  }
+  };
 
-  exportMetrics(): string {
-    const stats = this.getStats();
+  const exportMetrics = (): string => {
+    const stats = getStats();
     return JSON.stringify(stats, null, 2);
-  }
+  };
 
-  getRealTimeData() {
+  const getRealTimeData = () => {
     return {
       recentMemory: [{usage: 0, timestamp: Date.now()}], // Placeholder
-      activeMetrics: Array.from(this.metrics.values()).filter(m => !m.duration),
+      activeMetrics: Array.from(metricsMap.values()).filter(m => !m.duration),
       systemHealth: 'good' as const,
     };
-  }
+  };
 
-  clearMetrics(): void {
-    this.clearStats();
-  }
-}
+  const clearMetrics = (): void => {
+    clearStats();
+  };
 
-// Export singleton instance for backward compatibility
-export const performanceMonitor = new PerformanceMonitor();
+  return {
+    startMetric,
+    endMetric,
+    trackNavigation,
+    trackCacheHit,
+    getStats,
+    clearStats,
+    setDebugMode,
+    isDebugEnabled,
+    loadStoredMetrics,
+    measureAsync,
+    takeMemorySnapshot,
+    getDetailedReport,
+    exportMetrics,
+    getRealTimeData,
+    clearMetrics,
+  };
+};
+
+// Export singleton instance for backward compatibility (functional approach)
+export const performanceMonitor = createPerformanceMonitor();
