@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useImagePreloader} from '../hooks/useImagePreloader';
@@ -13,11 +13,13 @@ import {ProductsScreen} from '../screens/Products/ProductsScreen';
 import {GalleryScreen} from '../screens/Gallery/GalleryScreen';
 import {HomeScreen} from '../screens/Home/HomeScreen';
 import EnhancedHomeScreen from '../screens/EnhancedHomeScreen';
+
 import {performanceMonitor} from '../utils/performanceMonitor';
 
 export type RootStackParamList = {
   Home: undefined;
   EnhancedHome: undefined;
+
   Profile: undefined;
   Products: undefined;
   Gallery: undefined;
@@ -131,6 +133,7 @@ export const AppNavigator: React.FC = () => {
             title: 'Advanced Preloading Demo',
           }}
         />
+
         <Stack.Screen
           name="Profile"
           component={ProfileScreen}

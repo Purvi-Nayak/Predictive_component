@@ -8,14 +8,14 @@ export interface CacheItem<T = any> {
 }
 
 export interface CacheConfig {
-  defaultTTL?: number; // Time to live in milliseconds
-  maxSize?: number; // Maximum number of items in cache
+  defaultTTL?: number;
+  maxSize?: number;
   enableCompression?: boolean;
 }
 
 export interface CacheStats {
   totalItems: number;
-  totalSize: number; // Approximate size in bytes
+  totalSize: number;
   hitRate: number;
   missRate: number;
 }

@@ -28,7 +28,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
     // Track screen navigation performance
     const metricId = performanceMonitor.startMetric('home_screen_load');
 
-    // Simulate screen setup time
     setTimeout(() => {
       performanceMonitor.endMetric(metricId);
       performanceMonitor.trackNavigation(
@@ -46,14 +45,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
     setIsLoading(true);
 
     try {
-      // Add realistic network delay to show the difference
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // ✅ REAL PERFORMANCE: No artificial delays - measuring actual network time
+      const networkStartTime = Date.now();
 
       // Fetch real data from JSONPlaceholder API (no caching)
       const [postsResponse, photosResponse] = await Promise.all([
         fetch('https://jsonplaceholder.typicode.com/posts?_limit=3'),
         fetch('https://jsonplaceholder.typicode.com/photos?_limit=3'),
       ]);
+
+      const networkTime = Date.now() - networkStartTime;
+      console.log(`🌐 REAL Network Time: ${networkTime}ms`);
 
       const postsData = await postsResponse.json();
       const photosData = await photosResponse.json();
@@ -120,6 +122,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
       case 'Gallery':
         navigation.navigate('Gallery');
         break;
+
       case 'Settings':
         console.log('Settings screen not implemented yet');
         break;
@@ -156,7 +159,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
               }}
               onPress={() => navigation.navigate('EnhancedHome')}>
               <Text style={{color: 'white', fontWeight: 'bold', fontSize: 16}}>
-                🚀 Try Advanced Preloading Demo
+                Try Advanced Preloading Demo
               </Text>
               <Text style={{color: 'white', fontSize: 12, marginTop: 5}}>
                 See the difference in performance!

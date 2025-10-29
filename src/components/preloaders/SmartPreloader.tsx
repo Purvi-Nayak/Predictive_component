@@ -136,10 +136,10 @@ export const SmartPreloader: React.FC<SmartPreloaderProps> = ({
       }));
 
       console.log(
-        `✅ Smart preloading completed for ${screenName} in ${totalTime}ms`,
+        ` Smart preloading completed for ${screenName} in ${totalTime}ms`,
       );
     } catch (error) {
-      console.error(`❌ Smart preloading failed for ${screenName}:`, error);
+      console.error(` Smart preloading failed for ${screenName}:`, error);
       await performanceMonitor.endMetric(metricId);
     } finally {
       setIsPreloading(false);

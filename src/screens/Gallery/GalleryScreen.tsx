@@ -234,9 +234,7 @@ export const GalleryScreen: React.FC<GalleryScreenProps> = ({navigation}) => {
                   favorites.has(leftPhoto.id)
                     ? styles.favoriteActive
                     : styles.favoriteInactive,
-                ]}>
-                ❤️
-              </Text>
+                ]}></Text>
             </TouchableOpacity>
             <View style={styles.photoContent}>
               <Text style={styles.photoTitle} numberOfLines={1}>
@@ -269,9 +267,7 @@ export const GalleryScreen: React.FC<GalleryScreenProps> = ({navigation}) => {
                     favorites.has(rightPhoto.id)
                       ? styles.favoriteActive
                       : styles.favoriteInactive,
-                  ]}>
-                  ❤️
-                </Text>
+                  ]}></Text>
               </TouchableOpacity>
               <View style={styles.photoContent}>
                 <Text style={styles.photoTitle} numberOfLines={1}>

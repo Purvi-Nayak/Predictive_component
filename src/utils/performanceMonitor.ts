@@ -68,8 +68,7 @@ export const usePerformanceMonitor = () => {
       stateRef.current.metrics.set(id, metric);
 
       if (__DEV__) {
-        // Only log in development and reduce frequency
-        // console.log(`📊 Started tracking: ${name} (${type})`);
+  
       }
 
       return id;
@@ -422,7 +421,7 @@ export const createPerformanceMonitor = () => {
     metricsMap.set(id, completedMetric);
 
     if (isDebugMode) {
-      console.log(`✅ Completed: ${metric.name} - ${duration}ms`);
+      console.log(` Completed: ${metric.name} - ${duration}ms`);
     }
 
     await storeMetric(completedMetric);
@@ -444,7 +443,7 @@ export const createPerformanceMonitor = () => {
     navigationHistory.push(navigationMetric);
 
     if (isDebugMode) {
-      console.log(`🧭 Navigation: ${from} → ${to} (${duration}ms)`);
+      console.log(` Navigation: ${from} → ${to} (${duration}ms)`);
     }
 
     if (navigationHistory.length > 50) {

@@ -165,6 +165,25 @@ const useStyle = () => {
       textAlign: 'center',
       opacity: 0.6,
     },
+    // Performance Demo Card Styles
+    performanceCard: {
+      borderWidth: 2,
+      borderColor: '#007AFF',
+      backgroundColor: '#f0f8ff',
+    },
+    performanceImage: {
+      backgroundColor: '#007AFF',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    performanceIcon: {
+      fontSize: scale(30),
+      color: '#fff',
+    },
+    performanceTitle: {
+      color: '#007AFF',
+      fontWeight: 'bold',
+    },
   });
 };
 

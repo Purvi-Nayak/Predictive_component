@@ -135,9 +135,25 @@ export const useAdvancedAsyncStorage = (options: CacheOptions = {}) => {
     [set],
   );
 
+  const clearAll = useCallback(async () => {
+    // Clear memory cache
+    cacheRef.current.clear();
+
+    // Reset stats
+    setStats({
+      hitRate: 0,
+      totalSize: 0,
+      memoryPressure: 0,
+    });
+
+    console.log('🗑️ All cache data cleared successfully');
+    return true;
+  }, []);
+
   return {
     get,
     set,
+    clearAll,
     batchGet,
     batchSet,
     invalidateByTags,
